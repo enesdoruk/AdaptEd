@@ -10,13 +10,14 @@ from utils import save_model
 from utils import visualize
 from utils import set_model_mode
 import params
+import wandb
 
 # Source : 0, Target :1
 source_test_loader = mnist.mnist_test_loader
 target_test_loader = mnistm.mnistm_test_loader
 
 
-def source_only(encoder, classifier, source_train_loader, target_train_loader):
+def source_only(encoder, classifier, source_train_loader, target_train_loader): 
     print("Training with only the source dataset")
 
     classifier_criterion = nn.CrossEntropyLoss().cuda()
@@ -31,6 +32,7 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
 
         start_steps = epoch * len(source_train_loader)
         total_steps = params.epochs * len(target_train_loader)
+        cls_loss_epoch = []
 
         for batch_idx, (source_data, target_data) in enumerate(zip(source_train_loader, target_train_loader)):
             source_image, source_label = source_data
@@ -55,8 +57,14 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
                 total_dataset = len(source_train_loader.dataset)
                 percentage_completed = 100. * batch_idx / len(source_train_loader)
                 print(f'[{total_processed}/{total_dataset} ({percentage_completed:.0f}%)]\tClassification Loss: {class_loss.item():.4f}')
+            
+            cls_loss_epoch.append(class_loss.item())
 
-        test.tester(encoder, classifier, None, source_test_loader, target_test_loader, training_mode='Source_only')
-
+        source_acc, target_acc = test.tester(encoder, classifier, None, source_test_loader, target_test_loader, training_mode='Source_only')
+        wandb.log({"Target Accuracy": target_acc})
+        wandb.log({"Source Accuracy": source_acc})
+        wandb.log({"Train Loss": np.mean(cls_loss_epoch)})
+        
+        
     save_model(encoder, classifier, None, 'Source-only')
     visualize(encoder, 'Source-only')

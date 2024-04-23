@@ -7,7 +7,7 @@ import mnist
 import mnistm
 import itertools
 import os
-
+import wandb
 
 
 def optimizer_scheduler(optimizer, p):
@@ -78,6 +78,8 @@ def plot_embedding(X, y, d, training_mode):
     fig_name = 'saved_plot/' + str(training_mode) + '.png'
     plt.savefig(fig_name)
     print('{} has been successfully saved!'.format(fig_name))
+
+    wandb.log({"TSNE-PLOT": plt})
 
 
 def visualize(encoder, training_mode):

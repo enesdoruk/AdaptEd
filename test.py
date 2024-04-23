@@ -44,6 +44,8 @@ def tester(encoder, classifier, discriminator, source_test_loader, target_test_l
 
 
     print_accuracy(training_mode, accuracies)
+    
+    return calculate_accuracy(source_correct, source_dataset_len), calculate_accuracy(target_correct, target_dataset_len)
 
 
 def process_data(data, expand_channels=False):
