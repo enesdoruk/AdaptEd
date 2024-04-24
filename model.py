@@ -1,6 +1,6 @@
 import torch.nn as nn
-import torch.nn.functional as F
 import torch
+from grl import GradientReversal
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -54,8 +54,6 @@ class Extractor(nn.Module):
         out = self.layer3(out)
         out = self.layer4(out)
         out = self.avgpool(out)
-        out = out.view(out.size(0), -1)
-        
         return out
 
 
@@ -71,5 +69,49 @@ class Classifier(nn.Module):
         )
 
     def forward(self, x):
+        x = x.view(x.size(0), -1)
         x = self.classifier(x)
         return x
+
+
+
+class Discriminator(nn.Module):
+    def __init__(self, num_convs=2, in_channels=256):
+        super(Discriminator, self).__init__()
+
+        dis_tower = []
+        for i in range(num_convs):
+            dis_tower.append(
+                nn.Conv2d(
+                    in_channels,
+                    in_channels,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1
+                )
+            )
+            dis_tower.append(nn.GroupNorm(32, in_channels))
+            dis_tower.append(nn.ReLU())
+
+        self.add_module('dis_tower', nn.Sequential(*dis_tower))
+
+        self.cls_logits = nn.Conv2d(
+            in_channels, 1, kernel_size=3, stride=1,
+            padding=1
+        )
+
+        for modules in [self.dis_tower, self.cls_logits]:
+            for l in modules.modules():
+                if isinstance(l, nn.Conv2d):
+                    torch.nn.init.normal_(l.weight, std=0.01)
+                    torch.nn.init.constant_(l.bias, 0)
+
+    def forward(self, feature, alpha):
+        grad_reverse = GradientReversal(alpha)
+                
+        feature = grad_reverse(feature)
+        x = self.dis_tower(feature)
+        x_out = self.cls_logits(x)
+
+        return x_out
+ 

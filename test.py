@@ -8,7 +8,7 @@ def tester(encoder, classifier, discriminator, source_test_loader, target_test_l
     encoder.cuda()
     classifier.cuda()
     set_model_mode('eval', [encoder, classifier])
-
+        
     source_correct = 0
     target_correct = 0
 
@@ -23,9 +23,7 @@ def tester(encoder, classifier, discriminator, source_test_loader, target_test_l
 
         # Update correct counts
         source_correct += source_pred.eq(source_label.data.view_as(source_pred)).sum().item()
-        target_correct += target_pred.eq(target_label.data.view_as(target_pred)).sum().item()
-
-       
+        target_correct += target_pred.eq(target_label.data.view_as(target_pred)).sum().item()        
     source_dataset_len = len(source_test_loader.dataset)
     target_dataset_len = len(target_test_loader.dataset)
 
