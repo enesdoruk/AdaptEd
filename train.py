@@ -6,11 +6,13 @@ import torch.nn as nn
 import test
 import mnist
 import mnistm
-from utils import save_model
-from utils import visualize
-from utils import set_model_mode
+from utils import (visualize, set_model_mode, save_model, \
+                    split_image_to_patches)
 import params
 import wandb
+from dom_distance import calc_distance_dom
+
+
 
 # Source : 0, Target :1
 source_test_loader = mnist.mnist_test_loader
@@ -36,27 +38,38 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
 
         for batch_idx, (source_data, target_data) in enumerate(zip(source_train_loader, target_train_loader)):
             source_image, source_label = source_data
+            target_image, target_label = target_data
+
             p = float(batch_idx + start_steps) / total_steps
 
             source_image = torch.cat((source_image, source_image, source_image), 1)  # MNIST convert to 3 channel
             source_image, source_label = source_image.cuda(), source_label.cuda()  # 32
+            target_image, target_label = target_image.cuda(), target_label.cuda()  # 32
 
+            source_patches = split_image_to_patches(source_image, patch_size=params.patch_size)
+            target_patches = split_image_to_patches(target_image, patch_size=params.patch_size)
+            
+            
             optimizer = utils.optimizer_scheduler(optimizer=optimizer, p=p)
             optimizer.zero_grad()
 
-            source_feature = encoder(source_image)
+            source_feature, dom_feats_s = encoder(source_image)
+            target_feature, dom_feats_t = encoder(target_image)
+            
+            distance_loss = calc_distance_dom(dom_feats_s, dom_feats_t)
 
             # Classification loss
             class_pred = classifier(source_feature)
             class_loss = classifier_criterion(class_pred, source_label)
 
-            class_loss.backward()
+            total_loss = class_loss + (distance_loss * params.lambda_coral)
+            total_loss.backward()
             optimizer.step()
             if (batch_idx + 1) % 100 == 0:
                 total_processed = batch_idx * len(source_image)
                 total_dataset = len(source_train_loader.dataset)
                 percentage_completed = 100. * batch_idx / len(source_train_loader)
-                print(f'[{total_processed}/{total_dataset} ({percentage_completed:.0f}%)]\tClassification Loss: {class_loss.item():.4f}')
+                print(f'[{total_processed}/{total_dataset} ({percentage_completed:.0f}%)]\tClassification Loss: {class_loss.item():.4f}\tCoral Loss: {distance_loss.item():.4f}')
             
             cls_loss_epoch.append(class_loss.item())
 

@@ -48,15 +48,15 @@ class Extractor(nn.Module):
     
     
     def forward(self, x):
-        out = self.maxpool(self.relu(self.bn1(self.conv1(x))))
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        out = self.avgpool(out)
-        out = out.view(out.size(0), -1)
+        out1 = self.maxpool(self.relu(self.bn1(self.conv1(x))))
+        out2 = self.layer1(out1)
+        out3 = self.layer2(out2)
+        out4 = self.layer3(out3)
+        out5 = self.layer4(out4)
+        out6 = self.avgpool(out5)
+        out7 = out6.view(out6.size(0), -1)
         
-        return out
+        return out7, [out3, out5, out7]
 
 
 class Classifier(nn.Module):

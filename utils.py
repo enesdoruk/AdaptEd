@@ -10,6 +10,18 @@ import os
 import wandb
 
 
+
+def split_image_to_patches(image, patch_size):
+    patches = []
+    for i in range(0, image.size(2), patch_size):
+        for j in range(0, image.size(3), patch_size):
+            patch = image[:, :, i:i + patch_size, j:j + patch_size]
+            patches.append(patch)
+    
+    patches = torch.stack(patches)
+    return patches
+
+
 def optimizer_scheduler(optimizer, p):
     """
     Adjust the learning rate of optimizer

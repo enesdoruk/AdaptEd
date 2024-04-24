@@ -57,7 +57,7 @@ def process_data(data, expand_channels=False):
 
 
 def compute_output(encoder, classifier, images, alpha=None):
-    features = encoder(images)
+    features, dom_feats = encoder(images)
     outputs = classifier(features)  # Category classifier
     preds = outputs.data.max(1, keepdim=True)[1]
     return preds
