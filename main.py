@@ -7,11 +7,8 @@ import wandb
 
 
 def main():
-<<<<<<< HEAD
-    wandb.init(project='AdaptEd', name='mmd', sync_tensorboard=True)
-=======
     wandb.init(project='AdaptEd', name='base', sync_tensorboard=True)
->>>>>>> parent of 0a0deef... refactor: edit coral impl
+
     
     source_train_loader = mnist.mnist_train_loader
     target_train_loader = mnistm.mnistm_train_loader
