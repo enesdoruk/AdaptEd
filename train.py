@@ -47,15 +47,14 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
             source_image, source_label = source_image.cuda(), source_label.cuda()  # 32
             target_image, target_label = target_image.cuda(), target_label.cuda()  # 32
 
-            source_patches = split_image_to_patches(source_image, patch_size=params.patch_size)
-            target_patches = split_image_to_patches(target_image, patch_size=params.patch_size)
-            
+            # source_patches = split_image_to_patches(source_image, patch_size=params.patch_size)
+            # target_patches = split_image_to_patches(target_image, patch_size=params.patch_size)
             
             optimizer = utils.optimizer_scheduler(optimizer=optimizer, p=p)
             optimizer.zero_grad()
 
             source_feature, dom_feats_s = encoder(source_image)
-            target_feature, dom_feats_t = encoder(target_image)
+            _, dom_feats_t = encoder(target_image)
             
             distance_loss = calc_distance_dom(dom_feats_s, dom_feats_t)
 
