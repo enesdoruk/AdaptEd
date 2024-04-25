@@ -1,43 +1,44 @@
 import numpy as np
 import torch 
 
-def MMD(x, y, device, kernel) -> float:    
-    xx, yy, zz = torch.mm(x, x.t()), torch.mm(y, y.t()), torch.mm(x, y.t())
-    rx = (xx.diag().unsqueeze(0).expand_as(xx))
-    ry = (yy.diag().unsqueeze(0).expand_as(yy))
-    
-    dxx = rx.t() + rx - 2. * xx # Used for A in (1)
-    dyy = ry.t() + ry - 2. * yy # Used for B in (1)
-    dxy = rx.t() + ry - 2. * zz # Used for C in (1)
-    
-    XX, YY, XY = (torch.zeros(xx.shape).to(device),
-                  torch.zeros(xx.shape).to(device),
-                  torch.zeros(xx.shape).to(device))
-    
-    if kernel == "multiscale":
-        bandwidth_range = [0.2, 0.5, 0.9, 1.3]
-        for a in bandwidth_range:
-            XX += a**2 * (a**2 + dxx)**-1
-            YY += a**2 * (a**2 + dyy)**-1
-            XY += a**2 * (a**2 + dxy)**-1
-            
-    if kernel == "rbf":
-        bandwidth_range = [10, 15, 20, 50]
-        for a in bandwidth_range:
-            XX += torch.exp(-0.5*dxx/a)
-            YY += torch.exp(-0.5*dyy/a)
-            XY += torch.exp(-0.5*dxy/a)
-      
-    return torch.mean(XX + YY - 2. * XY)
+def coral(source, target):
+    d = source.size(1)  # dim vector
+
+    source_c = compute_covariance(source)
+    target_c = compute_covariance(target)
+
+    loss = torch.sum(torch.mul((source_c - target_c), (source_c - target_c)))
+
+    loss = loss / (4 * d * d)
+    return loss
+
+
+def compute_covariance(input_data):
+    """
+    Compute Covariance matrix of the input data
+    """
+    n = input_data.size(0)  # batch_size
+
+    # Check if using gpu or cpu
+    if input_data.is_cuda:
+        device = torch.device('cuda')
+    else:
+        device = torch.device('cpu')
+
+    id_row = torch.ones(n).resize(1, n).to(device=device)
+    sum_column = torch.mm(id_row, input_data)
+    mean_column = torch.div(sum_column, n)
+    term_mul_2 = torch.mm(mean_column.t(), mean_column)
+    d_t_d = torch.mm(input_data.t(), input_data)
+    c = torch.add(d_t_d, (-1 * term_mul_2)) * 1 / (n - 1)
+
+    return c
 
 
 def calc_distance_dom(source, target) -> float:
-    KERNEL_TYPE = "multiscale"
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     loss = 0.0
-    
+
     for src, trgt in zip(source, target):
-        loss += MMD(src.view(src.size(0),-1), trgt.view(src.size(0),-1), device, KERNEL_TYPE)
-        
+        loss += coral(src.view(src.size(0),-1), trgt.view(src.size(0),-1))
+
     return loss

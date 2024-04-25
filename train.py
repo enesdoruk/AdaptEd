@@ -62,17 +62,17 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
             class_pred = classifier(source_feature)
             class_loss = classifier_criterion(class_pred, source_label)
 
-            total_loss = class_loss + (distance_loss * params.lambda_mmd)
+            total_loss = class_loss + (distance_loss * params.lambda_coral)
             total_loss.backward()
             optimizer.step()
             if (batch_idx + 1) % 100 == 0:
                 total_processed = batch_idx * len(source_image)
                 total_dataset = len(source_train_loader.dataset)
                 percentage_completed = 100. * batch_idx / len(source_train_loader)
-                print(f'[{total_processed}/{total_dataset} ({percentage_completed:.0f}%)]\tClassification Loss: {class_loss.item():.4f}\tMMD Loss: {distance_loss.item()*params.lambda_mmd:.4f}')
+                print(f'[{total_processed}/{total_dataset} ({percentage_completed:.0f}%)]\tClassification Loss: {class_loss.item():.4f}\tCoral Loss: {distance_loss.item()*params.lambda_coral:.4f}')
             
             cls_loss_epoch.append(class_loss.item())
-            dist_loss_epoch.append(distance_loss.item() * params.lambda_mmd)
+            dist_loss_epoch.append(distance_loss.item() * params.lambda_coral)
 
         source_acc, target_acc = test.tester(encoder, classifier, None, source_test_loader, target_test_loader, training_mode='Source_only')
         wandb.log({"Target Accuracy": target_acc})
