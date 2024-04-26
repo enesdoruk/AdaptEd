@@ -56,7 +56,7 @@ class Extractor(nn.Module):
         out6 = self.avgpool(out5)
         out7 = out6.view(out6.size(0), -1)
         
-        return out7, [out3, out5, out7]
+        return out7
 
 
 class Classifier(nn.Module):

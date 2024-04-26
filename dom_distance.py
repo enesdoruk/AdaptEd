@@ -1,4 +1,3 @@
-import numpy as np
 import torch 
 
 def MMD(x, y, device, kernel) -> float:    
@@ -34,10 +33,7 @@ def MMD(x, y, device, kernel) -> float:
 def calc_distance_dom(source, target) -> float:
     KERNEL_TYPE = "multiscale"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    loss = 0.0
     
-    for src, trgt in zip(source, target):
-        loss += MMD(src.view(src.size(0),-1), trgt.view(src.size(0),-1), device, KERNEL_TYPE)
+    loss = MMD(source.view(source.size(0),-1), target.view(target.size(0),-1), device, KERNEL_TYPE)
         
     return loss
