@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from torch.autograd import Function
 from sklearn.manifold import TSNE
 import torch
 import mnist

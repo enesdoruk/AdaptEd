@@ -37,6 +37,8 @@ class Extractor(nn.Module):
         self.layer3 = self.make_layer(ResidualBlock, 256, 23, stride=2)
         self.layer4 = self.make_layer(ResidualBlock, 512, 3, stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+                
+        self.gradients = None
 
     def make_layer(self, block, out_channels, num_blocks, stride):
         strides = [stride] + [1] * (num_blocks - 1)
@@ -46,15 +48,27 @@ class Extractor(nn.Module):
             self.in_channels = out_channels
         return nn.Sequential(*layers)
     
+    def activations_hook(self, grad):
+        self.gradients = grad
     
     def forward(self, x):
-        out = self.maxpool(self.relu(self.bn1(self.conv1(x))))
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        out = self.avgpool(out)
-        return out
+        self.out1 = self.maxpool(self.relu(self.bn1(self.conv1(x))))
+        self.out2 = self.layer1(self.out1)
+        self.out3 = self.layer2(self.out2)
+        self.out4 = self.layer3(self.out3)
+        
+        h = self.out4.register_hook(self.activations_hook)
+
+        self.out5 = self.layer4(self.out4)
+        self.out6 = self.avgpool(self.out5)
+        return [self.out6, self.out4]
+    
+    def get_activations_gradient(self):
+        return self.gradients
+    
+    def get_activations(self, layer, x):
+        return layer(x)[1]
+    
 
 
 class Classifier(nn.Module):
