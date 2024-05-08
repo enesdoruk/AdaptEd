@@ -40,7 +40,6 @@ def source_only(encoder, classifier, discriminator, source_train_loader, target_
             target_image, target_label = target_data
 
             p = float(batch_idx + start_steps) / total_steps
-            alpha = 2. / (1. + np.exp(-10 * p)) - 1
 
             source_image = torch.cat((source_image, source_image, source_image), 1)  # MNIST convert to 3 channel
             source_image, source_label = source_image.cuda(), source_label.cuda()  # 32
@@ -54,7 +53,7 @@ def source_only(encoder, classifier, discriminator, source_train_loader, target_
             combined_image = torch.cat((source_image, target_image), 0)
             grl_feat = encoder(combined_image)[0]
             
-            domain_pred = discriminator(grl_feat, alpha)
+            domain_pred = discriminator(grl_feat)
             domain_labels = torch.cat((torch.full(domain_pred[:domain_pred.shape[0]//2,:,:].shape, 0, dtype=torch.float, device=domain_pred.device),
                                     torch.full(domain_pred[:domain_pred.shape[0]//2,:,:].shape, 1, dtype=torch.float, device=domain_pred.device)), 0).cuda()
 

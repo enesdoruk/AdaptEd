@@ -1,6 +1,5 @@
 import torch.nn as nn
 import torch
-from grl import GradientReversal
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -120,10 +119,7 @@ class Discriminator(nn.Module):
                     torch.nn.init.normal_(l.weight, std=0.01)
                     torch.nn.init.constant_(l.bias, 0)
 
-    def forward(self, feature, alpha):
-        grad_reverse = GradientReversal(alpha)
-                
-        feature = grad_reverse(feature)
+    def forward(self, feature):                
         x = self.dis_tower(feature)
         x_out = self.cls_logits(x)
 
