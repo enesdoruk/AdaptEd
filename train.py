@@ -53,10 +53,9 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
             optimizer = utils.optimizer_scheduler(optimizer=optimizer, p=p)
             optimizer.zero_grad()
 
-            source_feature, dom_feats_s = encoder(source_image)
-            _, dom_feats_t = encoder(target_image)
+            source_feature, dom_feats,  = encoder(source_image, target_image)
             
-            distance_loss = calc_distance_dom(dom_feats_s, dom_feats_t)
+            distance_loss = calc_distance_dom(dom_feats[0], dom_feats[1])
 
             # Classification loss
             class_pred = classifier(source_feature)
