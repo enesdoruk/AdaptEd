@@ -10,8 +10,7 @@ from utils import (visualize, set_model_mode, save_model, \
                     split_image_to_patches)
 import params
 import wandb
-from dom_distance import calc_distance_dom
-
+from kullback import calc_kl
 
 
 # Source : 0, Target :1
@@ -56,7 +55,7 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
             source_feature = encoder(source_image)
             target_feature = encoder(target_image)
             
-            distance_loss = calc_distance_dom(source_feature, target_feature)
+            distance_loss = calc_kl(source_feature, target_feature)
 
             # Classification loss
             class_pred = classifier(source_feature)
@@ -69,7 +68,7 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
                 total_processed = batch_idx * len(source_image)
                 total_dataset = len(source_train_loader.dataset)
                 percentage_completed = 100. * batch_idx / len(source_train_loader)
-                print(f'[{total_processed}/{total_dataset} ({percentage_completed:.0f}%)]\tClassification Loss: {class_loss.item():.4f}\tMMD Loss: {distance_loss.item()*params.lambda_mmd:.4f}')
+                print(f'[{total_processed}/{total_dataset} ({percentage_completed:.0f}%)]\tClassification Loss: {class_loss.item():.4f}\tKL Loss: {distance_loss.item()*params.lambda_mmd:.4f}')
             
             cls_loss_epoch.append(class_loss.item())
             dist_loss_epoch.append(distance_loss.item() * params.lambda_mmd)
