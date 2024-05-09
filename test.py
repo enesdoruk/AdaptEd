@@ -19,7 +19,7 @@ def tester(encoder, classifier, discriminator, source_test_loader, target_test_l
         target_image, target_label = process_data(target_data)
         
         # Compute source and target predictions
-        source_pred = compute_output(encoder, classifier, source_image, epoch, trg_img=target_image)
+        source_pred = compute_output(encoder, classifier, source_image, epoch, trg_img=None)
     
         target_pred = compute_output(encoder, classifier, target_image, epoch, trg_img=None)
 

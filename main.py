@@ -7,7 +7,7 @@ import wandb
 
 
 def main():
-    wandb.init(project='AdaptEd', name='grl', sync_tensorboard=True)
+    wandb.init(project='AdaptEd', name='grl_bayesnet', sync_tensorboard=True)
     
     source_train_loader = mnist.mnist_train_loader
     target_train_loader = mnistm.mnistm_train_loader
@@ -15,7 +15,7 @@ def main():
     if torch.cuda.is_available():
         encoder = model.Extractor().cuda()
         classifier = model.Classifier().cuda()
-        discriminator = model.Discriminator(in_channels=512).cuda()
+        discriminator = model.Discriminator().cuda()
 
         train.source_only(encoder, classifier, discriminator, source_train_loader, target_train_loader)
     else:

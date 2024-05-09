@@ -18,7 +18,7 @@ target_test_loader = mnistm.mnistm_test_loader
 
 def source_only(encoder, classifier, discriminator, source_train_loader, target_train_loader): 
     classifier_criterion = nn.CrossEntropyLoss().cuda()
-    disc_criterion = nn.BCEWithLogitsLoss().cuda()
+    loss_domain = torch.nn.NLLLoss().cuda()
     
     optimizer = optim.SGD(
         list(encoder.parameters()) +
@@ -51,14 +51,17 @@ def source_only(encoder, classifier, discriminator, source_train_loader, target_
 
             source_feature = encoder(source_image)[0]
             
-            combined_image = torch.cat((source_image, target_image), 0)
-            grl_feat = encoder(combined_image)[0]
+            target_feature = encoder(target_image)[0]
             
-            domain_pred = discriminator(grl_feat, alpha)
-            domain_labels = torch.cat((torch.full(domain_pred[:domain_pred.shape[0]//2,:,:].shape, 0, dtype=torch.float, device=domain_pred.device),
-                                    torch.full(domain_pred[:domain_pred.shape[0]//2,:,:].shape, 1, dtype=torch.float, device=domain_pred.device)), 0).cuda()
-
-            disc_loss = disc_criterion(domain_pred, domain_labels)
+            domain_pred_s = discriminator(source_feature, alpha)
+            domain_pred_t = discriminator(target_feature, alpha)
+            
+            dom_lab_s = torch.zeros(source_feature.shape[0]).long().cuda()
+            dom_lab_t = torch.ones(target_feature.shape[0]).long().cuda()
+            
+            err_s_domain = loss_domain(domain_pred_s, dom_lab_s)
+            err_t_domain = loss_domain(domain_pred_t, dom_lab_t)
+            disc_loss = err_s_domain + err_t_domain
             
             # Classification loss
             class_pred = classifier(source_feature)

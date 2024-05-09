@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 from grl import GradientReversal
+import torchbnn as bnn
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -90,42 +91,24 @@ class Classifier(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, num_convs=2, in_channels=256):
+    def __init__(self):
         super(Discriminator, self).__init__()
 
-        dis_tower = []
-        for i in range(num_convs):
-            dis_tower.append(
-                nn.Conv2d(
-                    in_channels,
-                    in_channels,
-                    kernel_size=3,
-                    stride=1,
-                    padding=1
-                )
+        self.model = nn.Sequential(
+                bnn.BayesLinear(prior_mu=0, prior_sigma=0.1, in_features=512, out_features=100),
+                nn.BatchNorm1d(100),
+                nn.ReLU(),
+                bnn.BayesLinear(prior_mu=0, prior_sigma=0.1, in_features=100, out_features=2),
+                nn.LogSoftmax(dim=1),
             )
-            dis_tower.append(nn.GroupNorm(32, in_channels))
-            dis_tower.append(nn.ReLU())
-
-        self.add_module('dis_tower', nn.Sequential(*dis_tower))
-
-        self.cls_logits = nn.Conv2d(
-            in_channels, 1, kernel_size=3, stride=1,
-            padding=1
-        )
-
-        for modules in [self.dis_tower, self.cls_logits]:
-            for l in modules.modules():
-                if isinstance(l, nn.Conv2d):
-                    torch.nn.init.normal_(l.weight, std=0.01)
-                    torch.nn.init.constant_(l.bias, 0)
-
-    def forward(self, feature, alpha):
+        
+        
+    def forward(self, feature, alpha):        
         grad_reverse = GradientReversal(alpha)
-                
-        feature = grad_reverse(feature)
-        x = self.dis_tower(feature)
-        x_out = self.cls_logits(x)
-
-        return x_out
+        flat_feat = feature.view(feature.shape[0], -1)
+        rev_feat = grad_reverse(flat_feat)
+        
+        out = self.model(rev_feat)  
+        
+        return out
  
