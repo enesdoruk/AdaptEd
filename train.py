@@ -10,7 +10,6 @@ from utils import (visualize, set_model_mode, save_model, \
                     split_image_to_patches)
 import params
 import wandb
-from dom_distance import calc_distance_dom
 
 
 
@@ -53,25 +52,25 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
             optimizer = utils.optimizer_scheduler(optimizer=optimizer, p=p)
             optimizer.zero_grad()
 
-            source_feature, dom_feats,  = encoder(source_image, target_image)
+            global_step = batch_idx + int(params.epochs) * len(source_train_loader)
             
-            distance_loss = calc_distance_dom(dom_feats[0], dom_feats[1])
+            source_feature, const_loss,  = encoder(source_image, target_image, global_step)
 
             # Classification loss
             class_pred = classifier(source_feature)
             class_loss = classifier_criterion(class_pred, source_label)
 
-            total_loss = class_loss + (distance_loss * params.lambda_mmd)
+            total_loss = class_loss + const_loss
             total_loss.backward()
             optimizer.step()
             if (batch_idx + 1) % 100 == 0:
                 total_processed = batch_idx * len(source_image)
                 total_dataset = len(source_train_loader.dataset)
                 percentage_completed = 100. * batch_idx / len(source_train_loader)
-                print(f'[{total_processed}/{total_dataset} ({percentage_completed:.0f}%)]\tClassification Loss: {class_loss.item():.4f}\tMMD Loss: {distance_loss.item()*params.lambda_mmd:.4f}')
+                print(f'[{total_processed}/{total_dataset} ({percentage_completed:.0f}%)]\tClassification Loss: {class_loss.item():.4f}\tConstAtt Loss: {const_loss.item():.4f}')
             
             cls_loss_epoch.append(class_loss.item())
-            dist_loss_epoch.append(distance_loss.item() * params.lambda_mmd)
+            dist_loss_epoch.append(const_loss.item())
 
         source_acc, target_acc = test.tester(encoder, classifier, None, source_test_loader, target_test_loader, training_mode='Source_only')
         wandb.log({"Target Accuracy": target_acc})

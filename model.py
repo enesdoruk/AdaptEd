@@ -2,6 +2,33 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
+
+class ChannelAttention(nn.Module):
+    def __init__(self, in_planes, ratio=16):
+        super(ChannelAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        
+        self.fc1   = nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False)
+        self.relu1 = nn.ReLU()
+        self.fc2   = nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False)
+        
+        self.sigmoid = nn.Sigmoid()
+        
+    def forward(self, x):
+        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
+        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
+
+        out = avg_out + max_out
+        return self.sigmoid(out)
+    
+    
+def domain_discrepancy(out1, out2):
+    diff = out1 - out2
+    loss = torch.mean(torch.abs(diff))
+    return loss
+
+
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super(ResidualBlock, self).__init__()
@@ -38,8 +65,13 @@ class Extractor(nn.Module):
         self.layer4 = self.make_layer(ResidualBlock, 512, 3, stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         
-        self.fc1 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=1)
+        self.const_att = ChannelAttention(512)
         
+        self.tar_ca_last = [1.]
+        self.src_ca_last = [1.]
+        self.weight_d = 0.3
+        self.ema_alpha = 0.999
+                
     def make_layer(self, block, out_channels, num_blocks, stride):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
@@ -49,7 +81,7 @@ class Extractor(nn.Module):
         return nn.Sequential(*layers)
     
     
-    def forward(self, x, target=None):
+    def forward(self, x, target=None, step=None):
         out1_s = self.maxpool(self.relu(self.bn1(self.conv1(x))))
         out2_s = self.layer1(out1_s)
         out3_s = self.layer2(out2_s)
@@ -66,11 +98,23 @@ class Extractor(nn.Module):
             out5_t = self.layer4(out4_t)
             out6_t = self.avgpool(out5_t)
 
-            out3_f1 = self.fc1(out3_t)
-            out3_f2 = self.fc1(out3_f1)
-            out_f = out3_t + out3_f2
+            source_att = self.const_att(out6_s)
+            target_att = self.const_att(out6_t)
             
-            return out7_s, [out3_s, out_f]
+            ema_alpha = min(1 - 1 / (step+1), self.ema_alpha)
+
+            source_feat_att = torch.mul(out6_s, source_att)
+            target_feat_att = torch.mul(out6_t, target_att)
+            
+            mean_tar_ca = self.tar_ca_last[0] * ema_alpha + (1. - ema_alpha) * torch.mean(target_feat_att, 0)
+            self.tar_ca_last[0] = mean_tar_ca.detach()
+            
+            mean_src_ca = self.src_ca_last[0] * ema_alpha + (1. - ema_alpha) * torch.mean(source_feat_att, 0)
+            self.src_ca_last[0] = mean_src_ca.detach()
+
+            d_const_loss = self.weight_d * domain_discrepancy(mean_src_ca, mean_tar_ca)
+            
+            return out7_s, d_const_loss
         else:
             return out7_s, None
 
